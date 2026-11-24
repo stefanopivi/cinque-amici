@@ -76,7 +76,7 @@ table.mx th{font-size:12px}
  <p id="edLine" class="note"></p>
  <div class="card">
   <h2>Il tuo gruppo</h2>
-  <div class="row" style="margin:0"><label for="gSel">Numero del gruppo</label><select id="gSel"></select><button class="btn" id="bStart">Inizia: parte il tempo</button></div>
+  <div class="row" style="margin:0"><label for="gSel">Numero del gruppo (1-8)</label><select id="gSel"></select><button class="btn" id="bStart">Inizia: parte il tempo</button></div>
  </div>
  <div class="row"><button class="btn sec" id="bTeach">Statistiche del docente</button></div>
 </section>
@@ -141,8 +141,8 @@ function today(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Rome',
 var qp=new URLSearchParams(location.search);
 var ED=(qp.get('e')||'').toUpperCase().replace(/[^A-Z0-9-]/g,''), EDAUTO=!ED; if(!ED)ED='DM-ENEL-'+today();
 $('edLine').innerHTML='Edizione: <b>'+esc(ED)+'</b>'+(EDAUTO?' (codice automatico dalla data di oggi)':'');
-var gs='';for(var i=1;i<=15;i++)gs+='<option value="'+i+'">'+i+'</option>';$('gSel').innerHTML=gs;
-var gq=parseInt(qp.get('g'));if(gq>=1&&gq<=15)$('gSel').value=gq;
+var gs='';for(var i=1;i<=8;i++)gs+='<option value="'+i+'">'+i+'</option>';$('gSel').innerHTML=gs;
+var gq=parseInt(qp.get('g'));if(gq>=1&&gq<=8)$('gSel').value=gq;
 
 function methodFor(g){var off=0;for(var i=0;i<ED.length;i++)off+=ED.charCodeAt(i);return METHODS[((g-1)+off)%3]}
 
@@ -313,7 +313,7 @@ $('bTeach').onclick=function(){var k=prompt('Chiave docente');if(!k)return;TK=k.
 $('bBack').onclick=function(){TK=null;show('vCover')};
 $('bRef').onclick=function(){loadStats(false)};
 function loadStats(first){
- if(!API_URL){ROWS=[];for(var g=1;g<=15;g++){var r=lsGet(skey(g));if(r){var s=JSON.parse(r);ROWS.push({e:ED,g:g,m:s.ph>=2?s.m:'',st:s.ph==3?'FINE':s.ph==2?'F2':'F1',t1:s.t1,ok1:s.ok1,a1:s.a1,t2:s.t2,ok2:s.ok2,a2:s.a2})}}
+ if(!API_URL){ROWS=[];for(var g=1;g<=8;g++){var r=lsGet(skey(g));if(r){var s=JSON.parse(r);ROWS.push({e:ED,g:g,m:s.ph>=2?s.m:'',st:s.ph==3?'FINE':s.ph==2?'F2':'F1',t1:s.t1,ok1:s.ok1,a1:s.a1,t2:s.t2,ok2:s.ok2,a2:s.a2})}}
   $('stSrc').textContent='Modalità locale (nessun foglio collegato): solo questo dispositivo.';SEL=ED;draw();show('vStats');return}
  $('stSrc').textContent='Caricamento…';if(first)show('vStats');
  fetch(API_URL+'?action=amici_stats&key='+encodeURIComponent(TK)).then(function(r){return r.json()}).then(function(j){
