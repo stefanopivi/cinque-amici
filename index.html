@@ -96,7 +96,7 @@ table.mx th{font-size:12px}
  <div class="card" id="ansCard">
   <h2>La vostra soluzione</h2>
   <div class="ans" id="ans"></div>
-  <div class="row"><button class="btn" id="bCheck">Verifica la soluzione</button><span id="attLeft" class="sub" style="margin:0"></span></div>
+  <div class="row"><button class="btn" id="bCheck">Verifica la soluzione</button><button class="btn sec hide" id="bGo">Passa alla fase 2</button><span id="attLeft" class="sub" style="margin:0"></span></div>
   <div id="res"></div>
  </div>
 </section>
@@ -186,7 +186,7 @@ function toPhase2(timeout){
 function upPhase(){
  if(S.ph==1){$('phPill').textContent='Fase 1 · senza strumenti';$('phPill').className='pill'}
  else{$('phPill').textContent='Fase 2 · metodo: '+MLAB[S.m];$('phPill').className='pill m'}
- var left=MAXATT-(S.ph==1?S.a1:S.a2);$('attLeft').textContent='Tentativi rimasti: '+left;$('bCheck').disabled=left<=0;
+ var left=MAXATT-(S.ph==1?S.a1:S.a2);$('attLeft').textContent='Tentativi rimasti: '+left;$('bCheck').disabled=left<=0;var go=$('bGo');go.className='btn sec'+(S.ph==1?'':' hide');go.disabled=!(S.ph==1&&S.a1>=MAXATT);
 }
 function buildAns(){
  var h='';P.forEach(function(p){
@@ -207,9 +207,10 @@ $('bCheck').onclick=function(){
  }
  save();upPhase();
  var l2=MAXATT-(S.ph==1?S.a1:S.a2);
- $('res').innerHTML='<div class="msg ko">La soluzione non è esatta.'+(l2>0?' Riflettete ancora.':' Tentativi finiti: continuate a ragionare in attesa del tempo.')+'</div>';
+ $('res').innerHTML='<div class="msg ko">La soluzione non è esatta.'+(l2>0?' Riflettete ancora.':(S.ph==1?' Tentativi finiti: potete passare subito alla fase 2 con il pulsante qui sotto.':' Tentativi finiti.'))+'</div>';
  sync(S.ph==1?'F1':'F2');
 };
+$('bGo').onclick=function(){if(S.ph!=1||S.a1<MAXATT)return;S.t1=Math.round((Date.now()-S.t0)/1000);S.ok1=false;toPhase2(false)};
 function showEnd(){
  show('vEnd');
  var t=S.ok1?['Risolto senza strumenti!','Il gruppo '+G+' ha trovato la soluzione in fase 1 in '+mmss(S.t1)+' ('+S.a1+(S.a1==1?' tentativo':' tentativi')+').']:
