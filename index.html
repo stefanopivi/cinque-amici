@@ -54,6 +54,13 @@ table.mx th{font-size:12px}
 .rest span.u{background:#e6f5ee;font-weight:bold}
 .hbar{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:14px}
 .hbar .n{width:140px;flex:none}.hbar .t{flex:1;background:#eee;border-radius:4px;height:18px;overflow:hidden}.hbar .t i{display:block;height:100%;background:var(--o)}.hbar .v{width:130px;flex:none;text-align:right}
+.gc{border:1px solid #e3e3e3;border-radius:10px;padding:12px 14px;margin:10px 0}.gh{margin-bottom:8px}.gh .sub{margin:0 0 0 6px}
+.gc h3{font-size:14px;margin:10px 0 4px;color:var(--g);text-transform:uppercase;letter-spacing:.4px}
+.att{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0;font-size:13px}.att .tm{width:92px;color:var(--g)}
+.ch{padding:2px 7px;border-radius:10px;font-size:12px}.ch.g{background:#e6f5ee;border:1px solid var(--ok)}.ch.r{background:#fdeceb;border:1px solid #f0b4af}
+table.mx.st td.c{cursor:default}table.mx td.bad{outline:3px solid var(--ko);outline-offset:-3px;background:#fdeceb}
+.tag{font-size:11px;color:var(--ok);margin-left:4px}.badtag{font-size:11px;color:var(--ko);margin-left:4px}
+.gc details{margin-top:8px;font-size:14px}.gc details p{margin:6px 0 0;background:var(--l);border-radius:8px;padding:8px 10px;white-space:pre-wrap}
 .hide{display:none}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.3s;pointer-events:none}
 #toast.on{opacity:1}
@@ -150,11 +157,11 @@ function methodFor(g){var off=0;for(var i=0;i<ED.length;i++)off+=ED.charCodeAt(i
 var G=0,S=null;
 function skey(g){return 'am_'+ED+'_'+g}
 function save(){lsSet(skey(G),JSON.stringify(S))}
-function newState(){return {t0:Date.now(),ph:1,t2s:0,m:'',a1:0,a2:0,ok1:false,ok2:false,t1:0,t2:0,ans:{},notes:'',mat:{},tree:[],ex:[]}}
+function newState(){return {t0:Date.now(),hist:[],ph:1,t2s:0,m:'',a1:0,a2:0,ok1:false,ok2:false,t1:0,t2:0,ans:{},notes:'',mat:{},tree:[],ex:[]}}
 
 $('bStart').onclick=function(){
  G=+$('gSel').value;var old=lsGet(skey(G));
- S=old?JSON.parse(old):newState();
+ S=old?JSON.parse(old):newState();if(!S.hist)S.hist=[];
  if(!old){save();sync('F1')}
  enter();
 };
@@ -166,7 +173,7 @@ function enter(){
  buildAns();buildTool();upPhase();tick();
  if(!window._iv)window._iv=setInterval(tick,500);
 }
-$('notes').oninput=function(){S.notes=this.value;save()};
+$('notes').oninput=function(){S.notes=this.value;save();syncSoon()};
 function remaining(){var now=Date.now();return S.ph==1?T1-(now-S.t0)/1000:T2-(now-S.t2s)/1000}
 function tick(){
  if(!S||$('vWork').className=='hide')return;
@@ -201,6 +208,7 @@ $('bCheck').onclick=function(){
  var ok=P.every(function(p){return S.ans[p]==KEY[p]});
  var el=(Date.now()-(S.ph==1?S.t0:S.t2s))/1000;
  if(S.ph==1)S.a1++;else S.a2++;
+ S.hist.push([S.ph,Math.round(el),ok?1:0,P.map(function(p){return P.indexOf(S.ans[p])})]);
  if(ok){
   if(S.ph==1){S.ok1=true;S.t1=Math.round(el)}else{S.ok2=true;S.t2=Math.round(el)}
   S.ph=3;save();sync('FINE');showEnd();return;
@@ -223,11 +231,14 @@ $('bHome').onclick=function(){show('vCover')};
 
 function sync(st){
  if(!API_URL)return;
- var b=JSON.stringify({action:'amici',e:ED,g:G,m:S.ph>=2?S.m:'',st:st,t1:S.t1,ok1:S.ok1,a1:S.a1,t2:S.t2,ok2:S.ok2,a2:S.a2});
+ var b=JSON.stringify({action:'amici',e:ED,g:G,m:S.ph>=2?S.m:'',st:st,t1:S.t1,ok1:S.ok1,a1:S.a1,t2:S.t2,ok2:S.ok2,a2:S.a2,h:S.hist,mx:matStr(S.mat),tr:treeC(S.tree),ex:S.ex.map(function(x){return [x.p,x.j,x.w]}),nt:String(S.notes||'').slice(0,4000)});
  fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:b}).catch(function(){
   fetch(API_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:b}).catch(function(){})});
 }
 
+function matStr(m){var s='';for(var r=0;r<5;r++)for(var c=0;c<5;c++)s+=((m||{})[r+'-'+c]||0);return s}
+function treeC(l){return (l||[]).map(function(n){return [n.p,n.j,n.s,treeC(n.c)]})}
+function syncSoon(){clearTimeout(window._st);window._st=setTimeout(function(){if(S&&S.ph<3)sync(S.ph==1?'F1':'F2')},3000)}
 // ===== strumenti =====
 function buildTool(){
  var box=$('toolBox');
@@ -242,17 +253,17 @@ function popts(){var h='';P.forEach(function(p){h+='<option value="'+p+'">Sig. '
 
 // matrice
 function toolMatrice(){
- var h='<p class="sub" style="margin:0 0 8px">Toccate una casella per segnare ✗ (non può essere), ✓ (è sicuro) o per svuotarla.</p><table class="mx"><tr><th></th>';
+ var h='<p class="sub" style="margin:0 0 8px">Toccate una casella: <b>un tocco = ✗</b> (non può essere), <b>due tocchi = ✓</b> (è sicuro), <b>tre tocchi = casella vuota</b>.</p><table class="mx"><tr><th></th>';
  P.forEach(function(j){h+='<th>'+j+'</th>'});h+='</tr>';
  P.forEach(function(p,r){h+='<tr><th>Sig. '+PN[p]+'</th>';
   P.forEach(function(j,c){var v=S.mat[r+'-'+c]||0;h+='<td class="c '+(v==1?'x':v==2?'v':'')+'" data-k="'+r+'-'+c+'" role="button" aria-label="'+PN[p]+' / '+j+'">'+(v==1?'✗':v==2?'✓':'')+'</td>'});h+='</tr>'});
  return h+'</table>';
 }
-function bindMatrice(){document.querySelectorAll('table.mx td.c').forEach(function(td){td.onclick=function(){var k=this.getAttribute('data-k');var v=((S.mat[k]||0)+1)%3;S.mat[k]=v;save();this.className='c '+(v==1?'x':v==2?'v':'');this.textContent=v==1?'✗':v==2?'✓':''}})}
+function bindMatrice(){document.querySelectorAll('table.mx td.c').forEach(function(td){td.onclick=function(){var k=this.getAttribute('data-k');var v=((S.mat[k]||0)+1)%3;S.mat[k]=v;save();syncSoon();this.className='c '+(v==1?'x':v==2?'v':'');this.textContent=v==1?'✗':v==2?'✓':''}})}
 
 // albero
 function toolAlbero(){
- return '<p class="sub" style="margin:0 0 8px">Aprite un’ipotesi («il Signor X fa il Y») e sviluppatene le conseguenze sotto di essa. Segnate ✗ i rami che portano a una contraddizione.</p>'+
+ return '<p class="sub" style="margin:0 0 8px">Aprite un’ipotesi («il Signor X fa il Y») e con «＋ sotto» sviluppatene le conseguenze. Sul pulsante a destra di ogni ipotesi: <b>un click = ✗</b> (ramo che porta a una contraddizione, da scartare), <b>due click = ✓</b> (ramo che regge), <b>tre click = ?</b> (da verificare).</p>'+
  '<div class="row" style="margin:0 0 8px"><span id="tgt" class="note">Nuova ipotesi: in radice</span><button class="btn sm sec hide" id="tgtX">Annulla</button></div>'+
  '<div class="row" style="margin:0 0 8px"><select id="tP">'+popts()+'</select> fa il <select id="tJ">'+opts()+'</select><button class="btn sm" id="tAdd">Aggiungi ipotesi</button></div><div class="tree" id="tree"></div>';
 }
@@ -263,7 +274,7 @@ function bindAlbero(){
  $('tAdd').onclick=function(){
   var n={id:Date.now()+Math.floor(Math.random()*1000),p:$('tP').value,j:$('tJ').value,s:0,c:[]};
   if(TGT){var f=findN(S.tree,TGT,[]);if(f)f.n.c.push(n);else S.tree.push(n)}else S.tree.push(n);
-  save();drawTree()};
+  save();syncSoon();drawTree()};
  $('tgtX').onclick=function(){TGT=null;uptgt()};
  drawTree();
 }
@@ -283,7 +294,7 @@ function drawTree(){
   if(a=='sub'){TGT=id;uptgt();return}
   if(a=='st'){f.n.s=(f.n.s+1)%3}
   if(a=='del'){f.list.splice(f.i,1);if(TGT==id)TGT=null}
-  save();drawTree();uptgt()}});
+  save();syncSoon();drawTree();uptgt()}});
 }
 
 // esclusione
@@ -295,14 +306,14 @@ function toolEsclusione(){
 }
 function bindEsclusione(){
  $('eAdd').onclick=function(){var w=$('eW').value.trim();if(w.length<3){toast('Scrivi il perché');return}
-  S.ex.push({p:$('eP').value,j:$('eJ').value,w:w});$('eW').value='';save();drawEx()};
+  S.ex.push({p:$('eP').value,j:$('eJ').value,w:w});$('eW').value='';save();syncSoon();drawEx()};
  drawEx();
 }
 function drawEx(){
  var h='<table><tr><th>Escluso</th><th>Perché</th><th></th></tr>';
  S.ex.forEach(function(x,i){h+='<tr><td>Sig. '+PN[x.p]+' ≠ '+x.j+'</td><td>'+esc(x.w)+'</td><td><button class="btn sm sec" data-i="'+i+'">×</button></td></tr>'});
  $('eLog').innerHTML=S.ex.length?h+'</table>':'<p class="sub">Nessuna esclusione ancora.</p>';
- $('eLog').querySelectorAll('button').forEach(function(b){b.onclick=function(){S.ex.splice(+this.getAttribute('data-i'),1);save();drawEx()}});
+ $('eLog').querySelectorAll('button').forEach(function(b){b.onclick=function(){S.ex.splice(+this.getAttribute('data-i'),1);save();syncSoon();drawEx()}});
  var r='';P.forEach(function(p){var ex={};S.ex.forEach(function(x){if(x.p==p)ex[x.j]=1});var left=P.filter(function(j){return !ex[j]});
   r+='<div><b>Sig. '+PN[p]+'</b></div><div class="rest">'+left.map(function(j){return '<span'+(left.length==1?' class="u"':'')+'>'+j+'</span>'}).join('')+'</div>'});
  $('eRest').innerHTML=r;
@@ -314,7 +325,7 @@ $('bTeach').onclick=function(){var k=prompt('Chiave docente');if(!k)return;TK=k.
 $('bBack').onclick=function(){TK=null;show('vCover')};
 $('bRef').onclick=function(){loadStats(false)};
 function loadStats(first){
- if(!API_URL){ROWS=[];for(var g=1;g<=8;g++){var r=lsGet(skey(g));if(r){var s=JSON.parse(r);ROWS.push({e:ED,g:g,m:s.ph>=2?s.m:'',st:s.ph==3?'FINE':s.ph==2?'F2':'F1',t1:s.t1,ok1:s.ok1,a1:s.a1,t2:s.t2,ok2:s.ok2,a2:s.a2})}}
+ if(!API_URL){ROWS=[];for(var g=1;g<=8;g++){var r=lsGet(skey(g));if(r){var s=JSON.parse(r);ROWS.push({e:ED,g:g,m:s.ph>=2?s.m:'',st:s.ph==3?'FINE':s.ph==2?'F2':'F1',t1:s.t1,ok1:s.ok1,a1:s.a1,t2:s.t2,ok2:s.ok2,a2:s.a2,h:s.hist||[],mx:matStr(s.mat),tr:treeC(s.tree),ex:(s.ex||[]).map(function(x){return [x.p,x.j,x.w]}),nt:s.notes})}}
   $('stSrc').textContent='Modalità locale (nessun foglio collegato): solo questo dispositivo.';SEL=ED;draw();show('vStats');return}
  $('stSrc').textContent='Caricamento…';if(first)show('vStats');
  fetch(API_URL+'?action=amici_stats&key='+encodeURIComponent(TK)).then(function(r){return r.json()}).then(function(j){
@@ -322,6 +333,58 @@ function loadStats(first){
   ROWS=j.rows;$('stSrc').textContent='Dati dal foglio Google · aggiornati alle '+new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
   if(first)SEL=ED;draw();
  }).catch(function(){toast('Impossibile leggere i dati');if(first)show('vCover')});
+}
+var FIL='all',ST={F1:'fase 1 in corso',F2:'fase 2 in corso',FINE:'concluso'};
+function pj(s){try{if(!s)return null;return typeof s=='string'?JSON.parse(s):s}catch(e){return null}}
+function attHtml(h,ph){
+ var a=(h||[]).filter(function(x){return x[0]==ph});if(!a.length)return '';
+ var o='',sc=[];
+ a.forEach(function(x,i){var n=0,ch='';P.forEach(function(p,k){var j=P[x[3][k]]||'?';var ok=KEY[p]==j;if(ok)n++;ch+='<span class="ch '+(ok?'g':'r')+'" title="Sig. '+PN[p]+' = '+j+'">'+PN[p].slice(0,3)+' → '+j.slice(0,3)+'</span>'});
+  sc.push(n);o+='<div class="att"><span class="tm">'+(i+1)+'° · '+mmss(x[1])+'</span>'+ch+'<b>'+n+'/5</b>'+(x[2]?' ✓':'')+'</div>'});
+ return o+'<div class="sub" style="margin:4px 0 0">Risposte esatte per tentativo: '+sc.join(' → ')+'</div>';
+}
+function matHtml(mx){
+ if(!mx||String(mx).length!=25)return '<p class="sub">Nessun dato sulla matrice.</p>';mx=String(mx);
+ var h='<table class="mx st"><tr><th></th>'+P.map(function(j){return '<th>'+j+'</th>'}).join('')+'</tr>';
+ P.forEach(function(p,r){h+='<tr><th>Sig. '+PN[p]+'</th>';P.forEach(function(j,c){var v=+mx.charAt(r*5+c),bad=(v==1&&KEY[p]==j)||(v==2&&KEY[p]!=j);h+='<td class="c'+(v==1?' x':v==2?' v':'')+(bad?' bad':'')+'">'+(v==1?'✗':v==2?'✓':'')+'</td>'});h+='</tr>'});
+ return h+'</table><p class="sub" style="margin:4px 0 0">✗ (un click) non può essere · ✓ (due click) è sicuro · in rosso le caselle sbagliate.</p>';
+}
+function trHtml(list,path){
+ if(!list||!list.length)return '';var h='<ul>';
+ list.forEach(function(n){var pp=path.concat([{p:n[0],j:n[1]}]);var cf=conflict(pp),ok=KEY[n[0]]==n[1];
+  h+='<li><span class="nd s'+(n[2]||0)+'">Sig. '+PN[n[0]]+' = '+n[1]+(cf?' <span class="w">⚠ incompatibile</span>':'')+(ok?'<span class="tag">ipotesi esatta</span>':'')+'</span>'+trHtml(n[3],pp)+'</li>'});
+ return h+'</ul>';
+}
+function exHtml(ex){
+ if(!ex||!ex.length)return '<p class="sub">Nessuna esclusione registrata.</p>';
+ var h='<table><tr><th>Escluso</th><th>Perché</th></tr>';
+ ex.forEach(function(x){var bad=KEY[x[0]]==x[1];h+='<tr><td>Sig. '+PN[x[0]]+' ≠ '+x[1]+(bad?'<span class="badtag">esclusione errata</span>':'')+'</td><td>'+esc(x[2])+'</td></tr>'});
+ h+='</table><div style="margin-top:8px"><b>Possibilità rimaste</b></div>';
+ P.forEach(function(p){var e={};ex.forEach(function(x){if(x[0]==p)e[x[1]]=1});var l=P.filter(function(j){return !e[j]});
+  h+='<div style="font-size:13px"><b>'+PN[p]+'</b></div><div class="rest">'+l.map(function(j){return '<span'+(l.length==1?' class="u"':'')+'>'+j+'</span>'}).join('')+'</div>'});
+ return h;
+}
+function grpCard(r){
+ var h=pj(r.h)||[],has1=h.some(function(x){return x[0]==1}),m=r.m;
+ var res=r.ok1?'risolto in fase 1 in '+mmss(r.t1):r.ok2?'risolto in fase 2 in '+mmss(r.t2):(r.st=='FINE'?'non risolto':'in corso');
+ var body='';
+ if((FIL=='all'||FIL=='att')&&has1)body+='<h3>Fase 1 · per tentativi successivi</h3>'+attHtml(h,1);
+ if((FIL=='all'||FIL==m)&&m){
+  body+='<h3>Fase 2 · '+MLAB[m]+'</h3>';
+  if(m=='matrice')body+=matHtml(r.mx);else if(m=='albero'){var tr=pj(r.tr);body+=(tr&&tr.length?'<div class="tree">'+trHtml(tr,[])+'</div>':'<p class="sub">Nessuna ipotesi registrata.</p>')}else body+=exHtml(pj(r.ex));
+  var a2=attHtml(h,2);if(a2)body+='<div style="margin-top:8px"><b>Tentativi di soluzione</b></div>'+a2;
+ }
+ if(!body)return '';
+ if(FIL=='all'&&r.nt)body+='<details><summary>Appunti del gruppo</summary><p>'+esc(r.nt)+'</p></details>';
+ return '<div class="gc"><div class="gh"><b>Gruppo '+r.g+'</b> <span class="pill'+(m?' m':'')+'">'+(m?MLAB[m]:'senza strumento')+'</span><span class="sub">'+ST[r.st]+' · '+res+'</span></div>'+body+'</div>';
+}
+function galleryHtml(rs){
+ var cnt={all:rs.length,att:0,matrice:0,albero:0,esclusione:0};
+ rs.forEach(function(r){var h=pj(r.h)||[];if(h.some(function(x){return x[0]==1}))cnt.att++;if(r.m)cnt[r.m]++});
+ var L=[['all','Tutto'],['att','Per tentativi'],['matrice','Matrice'],['albero','Albero'],['esclusione','Esclusione']];
+ var c='<div class="chips noprint" id="chipsF">';L.forEach(function(x){c+='<span class="chip'+(FIL==x[0]?' on':'')+'" data-f="'+x[0]+'">'+x[1]+' ('+cnt[x[0]]+')</span>'});c+='</div>';
+ var cards=rs.slice().sort(function(a,b){return a.g-b.g}).map(grpCard).join('');
+ return '<div class="card"><h2>Come hanno lavorato i gruppi</h2><p class="sub" style="margin:0 0 6px">Scegli un filtro per proiettare un solo modo di lavorare, gruppo per gruppo.</p>'+c+(cards||'<p class="sub">Nessun dettaglio disponibile per questo filtro.</p>')+'</div>';
 }
 function eds(){var s={};ROWS.forEach(function(r){s[r.e]=1});return Object.keys(s).sort()}
 function med(a){if(!a.length)return null;a=a.slice().sort(function(x,y){return x-y});var m=a.length>>1;return a.length%2?a[m]:(a[m-1]+a[m])/2}
@@ -348,14 +411,14 @@ function draw(){
    h+='<tr><td>'+esc(e)+'</td><td>'+x.length+'</td><td>'+a+'</td><td>'+b+'</td><td>'+pct(a+b,x.length)+'</td></tr>'});
   h+='</table></div>';
  }else{
-  var ST={F1:'fase 1 in corso',F2:'fase 2 in corso',FINE:'concluso'};
-  h+='<div class="card"><h2>Gruppo per gruppo</h2><table><tr><th>Gruppo</th><th>Stato</th><th>Fase 1</th><th>Metodo</th><th>Fase 2</th></tr>';
+  h+='<div class="card"><h2>Riepilogo gruppo per gruppo</h2><table><tr><th>Gruppo</th><th>Stato</th><th>Fase 1</th><th>Metodo</th><th>Fase 2</th></tr>';
   rs.slice().sort(function(a,b){return a.g-b.g}).forEach(function(r){
    var f1=r.ok1?'risolto in '+mmss(r.t1)+' ('+r.a1+' tent.)':(r.st=='F1'?r.a1+' tent.':'non risolto ('+r.a1+' tent.)');
    var f2=r.m?(r.ok2?'risolto in '+mmss(r.t2)+' ('+r.a2+' tent.)':(r.st=='FINE'?'non risolto ('+r.a2+' tent.)':r.a2+' tent.')):'–';
    h+='<tr><td>'+r.g+'</td><td>'+ST[r.st]+'</td><td>'+f1+'</td><td>'+(r.m?MLAB[r.m]:'–')+'</td><td>'+f2+'</td></tr>'});
-  h+='</table></div>';
+  h+='</table></div>'+galleryHtml(rs);
  }
  $('stBody').innerHTML=h;
+ var cf=$('chipsF');if(cf)cf.onclick=function(ev){var f=ev.target.getAttribute('data-f');if(f){FIL=f;draw()}};
 }
 </script></body></html>
